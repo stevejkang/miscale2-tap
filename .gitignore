@@ -1,2 +1,13 @@
 # macOS
 .DS_Store
+
+# ESPHome
+firmware/secrets.yaml
+firmware/.esphome/
+
+# Ingest
+ingest/ingest
+ingest/.env
+ingest/data/
+*.db
+*.tar
