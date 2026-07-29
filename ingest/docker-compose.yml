@@ -1,0 +1,14 @@
+services:
+  ingest:
+    image: miscale2-tap:latest
+    container_name: miscale2-tap
+    restart: unless-stopped
+    ports:
+      - "51001:51001"
+    volumes:
+      - /volume1/docker/miscale2-tap/data:/data
+    environment:
+      - DB_PATH=/data/weight.db
+      - LISTEN_ADDR=:51001
+#      - API_TOKEN=your-secret-token
+#      - CALLBACK_URL=http://example.com/webhook
