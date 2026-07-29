@@ -1,0 +1,71 @@
+esphome:
+  name: scale-bridge
+  min_version: "2026.3.0"
+
+esp32:
+  board: esp32-c6-devkitc-1
+  flash_size: 8MB
+
+logger:
+  level: INFO # set VERBOSE to see raw BLE advertise packets
+  hardware_uart: USB_CDC
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+http_request:
+  timeout: 10s
+  # no verify_ssl — LAN-only HTTP
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 320ms
+    window: 300ms
+#  on_ble_advertise:
+#    - mac_address: !secret scale_mac
+#      then:
+#       - lambda: |-
+#           for (auto &sd : x.get_service_datas()) {
+#             if (sd.uuid == esp32_ble_tracker::ESPBTUUID::from_uint16(0x181B) && sd.data.size() == 13) {
+#               char hex[40];
+#               for (int i = 0; i < 13; i++) snprintf(hex + i*3, 4, "%02X ", sd.data[i]);
+#               ESP_LOGI("scale_diag", "RSSI=%d 181B[13]: %s", x.get_rssi(), hex);
+#             }
+#           }
+
+sensor:
+  - platform: xiaomi_miscale
+    mac_address: !secret scale_mac
+    clear_impedance: true
+    weight:
+      name: "Weight"
+      id: scale_weight
+      filters:
+        - throttle: 60s
+      on_value:
+        - delay: 100ms # waits for impedance publish
+        - http_request.post:
+            url: !secret ingest_url
+            request_headers:
+              Content-Type: application/json
+            body: !lambda |-
+              char buf[96];
+              float z = id(scale_impedance).state;
+              if (std::isnan(z)) {
+                snprintf(buf, sizeof(buf), "{\"kg\":%.2f}", x);
+              } else {
+                snprintf(buf, sizeof(buf), "{\"kg\":%.2f,\"ohm\":%.0f}", x, z);
+              }
+              return std::string(buf);
+    impedance:
+      name: "Impedance"
+      id: scale_impedance
