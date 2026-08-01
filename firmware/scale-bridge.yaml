@@ -7,8 +7,11 @@ esp32:
   flash_size: 8MB
 
 logger:
-  level: INFO # set VERBOSE to see raw BLE advertise packets
+  level: DEBUG # set VERBOSE to see raw BLE advertise packets (INFO, DEBUG, VERBOSE...)
   hardware_uart: USB_CDC
+
+debug:
+  update_interval: never
 
 wifi:
   ssid: !secret wifi_ssid
@@ -53,6 +56,8 @@ sensor:
         - throttle: 60s
       on_value:
         - delay: 8s # impedance publishes ~5s after the first stabilized weight
+        - lambda: |-
+            ESP_LOGI("heap", "PRE-HTTP free=%u min=%u", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
         - http_request.post:
             url: !secret ingest_url
             request_headers:
