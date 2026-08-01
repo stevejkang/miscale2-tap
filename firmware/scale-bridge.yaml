@@ -52,7 +52,7 @@ sensor:
       filters:
         - throttle: 60s
       on_value:
-        - delay: 100ms # waits for impedance publish
+        - delay: 8s # impedance publishes ~5s after the first stabilized weight
         - http_request.post:
             url: !secret ingest_url
             request_headers:
