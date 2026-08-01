@@ -27,12 +27,13 @@ ota:
 
 http_request:
   timeout: 10s
+  watchdog_timeout: 30s # slow TCP connect blocks the loop past the 5s task watchdog
   # no verify_ssl — LAN-only HTTP
 
 esp32_ble_tracker:
   scan_parameters:
-    interval: 320ms
-    window: 300ms
+    interval: 640ms
+    window: 320ms
 #  on_ble_advertise:
 #    - mac_address: !secret scale_mac
 #      then:
