@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -54,28 +55,38 @@ func handlePostWeight(db *sql.DB, callbackURL string) http.HandlerFunc {
 			impedance = &v
 		}
 
-		record, dup, err := insertWeight(db, p.Kg, impedance)
-		if err != nil {
-			log.Printf("ERROR insert: %v", err)
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-
-		if dup {
-			log.Printf("DUPLICATE weight=%.2f kg", p.Kg)
-		} else if impedance != nil {
-			log.Printf("STORED weight=%.2f kg impedance=%d", p.Kg, *impedance)
-		} else {
-			log.Printf("STORED weight=%.2f kg", p.Kg)
-		}
-
+		// Respond first; a slow INSERT crashes the ESP32 HTTP client.
 		w.WriteHeader(http.StatusNoContent)
 
-		if !dup && callbackURL != "" && record != nil {
-			go fireCallback(callbackURL, record)
-		}
+		weightWrites.Add(1)
+		go func() {
+			defer weightWrites.Done()
+
+			record, dup, err := insertWeight(db, p.Kg, impedance)
+			if err != nil {
+				log.Printf("ERROR insert: %v", err)
+				return
+			}
+
+			if dup {
+				log.Printf("DUPLICATE weight=%.2f kg", p.Kg)
+				return
+			}
+
+			if impedance != nil {
+				log.Printf("STORED weight=%.2f kg impedance=%d", p.Kg, *impedance)
+			} else {
+				log.Printf("STORED weight=%.2f kg", p.Kg)
+			}
+
+			if callbackURL != "" && record != nil {
+				fireCallback(callbackURL, record)
+			}
+		}()
 	}
 }
+
+var weightWrites sync.WaitGroup
 
 func handlePostClear(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

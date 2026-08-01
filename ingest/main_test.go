@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestPostWeight_Stabilized(t *testing.T) {
@@ -28,6 +27,7 @@ func TestPostWeight_Stabilized(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
 	}
+	weightWrites.Wait()
 
 	record, err := queryLatest(db)
 	if err != nil {
@@ -105,6 +105,7 @@ func TestPostWeight_NoImpedance(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
 	}
+	weightWrites.Wait()
 
 	record, err := queryLatest(db)
 	if err != nil {
@@ -138,6 +139,7 @@ func TestPostWeight_Duplicate(t *testing.T) {
 	if rec1.Code != http.StatusNoContent {
 		t.Fatalf("first insert: expected 204, got %d", rec1.Code)
 	}
+	weightWrites.Wait()
 
 	req2 := httptest.NewRequest(http.MethodPost, "/weight", strings.NewReader(body))
 	rec2 := httptest.NewRecorder()
@@ -145,6 +147,7 @@ func TestPostWeight_Duplicate(t *testing.T) {
 	if rec2.Code != http.StatusNoContent {
 		t.Fatalf("duplicate insert: expected 204, got %d", rec2.Code)
 	}
+	weightWrites.Wait()
 
 	records, err := queryWeights(db, "", "", 0, "desc")
 	if err != nil {
@@ -185,6 +188,7 @@ func TestGetWeight_ListResponse(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/weight", strings.NewReader(`{"kg":70.00}`))
 	rec := httptest.NewRecorder()
 	postHandler(rec, req)
+	weightWrites.Wait()
 
 	getHandler := handleGetWeight(db)
 	req = httptest.NewRequest(http.MethodGet, "/weight", nil)
@@ -222,6 +226,7 @@ func TestPostClear(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/weight", strings.NewReader(`{"kg":70.00}`))
 	rec := httptest.NewRecorder()
 	post(rec, req)
+	weightWrites.Wait()
 
 	record, _ := queryLatest(db)
 	if record == nil {
@@ -269,12 +274,7 @@ func TestCallback(t *testing.T) {
 		t.Fatalf("expected 204, got %d", rec.Code)
 	}
 
-	for i := 0; i < 50; i++ {
-		if called {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	weightWrites.Wait()
 
 	if !called {
 		t.Fatal("callback was not called")
@@ -308,13 +308,13 @@ func TestCallback_NotCalledOnDuplicate(t *testing.T) {
 	rec1 := httptest.NewRecorder()
 	handler(rec1, req1)
 
-	time.Sleep(100 * time.Millisecond)
+	weightWrites.Wait()
 
 	req2 := httptest.NewRequest(http.MethodPost, "/weight", strings.NewReader(`{"kg":72.50}`))
 	rec2 := httptest.NewRecorder()
 	handler(rec2, req2)
 
-	time.Sleep(100 * time.Millisecond)
+	weightWrites.Wait()
 
 	if callCount != 1 {
 		t.Errorf("expected callback called once, got %d", callCount)
