@@ -66,6 +66,10 @@ sensor:
                 snprintf(buf, sizeof(buf), "{\"kg\":%.2f,\"ohm\":%.0f}", x, z);
               }
               return std::string(buf);
+            on_error:
+              - logger.log:
+                  format: "weight POST failed, measurement lost"
+                  level: WARN
     impedance:
       name: "Impedance"
       id: scale_impedance
