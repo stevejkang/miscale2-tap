@@ -85,3 +85,19 @@ interval:
           ESP_LOGI("health", "heap free=%lu min=%lu",
                    (unsigned long) esp_get_free_heap_size(),
                    (unsigned long) esp_get_minimum_free_heap_size());
+
+time:
+  - platform: sntp
+    timezone: Asia/Seoul
+    on_time:
+      - hours: 4
+        minutes: 0
+        seconds: 0
+        then:
+          - logger.log: "Scheduled daily reboot"
+          - delay: 1s
+          - button.press: restart_btn
+
+button:
+  - platform: restart
+    id: restart_btn
