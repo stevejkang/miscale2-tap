@@ -57,8 +57,6 @@ sensor:
         - throttle: 60s
       on_value:
         - delay: 8s # impedance publishes ~5s after the first stabilized weight
-        - lambda: |-
-            ESP_LOGI("heap", "PRE-HTTP free=%u min=%u", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
         - http_request.post:
             url: !secret ingest_url
             request_headers:
@@ -79,3 +77,11 @@ sensor:
     impedance:
       name: "Impedance"
       id: scale_impedance
+
+interval:
+  - interval: 5min
+    then:
+      - lambda: |-
+          ESP_LOGI("health", "heap free=%lu min=%lu",
+                   (unsigned long) esp_get_free_heap_size(),
+                   (unsigned long) esp_get_minimum_free_heap_size());
